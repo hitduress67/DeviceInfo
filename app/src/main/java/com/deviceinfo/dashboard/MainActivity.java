@@ -93,6 +93,8 @@ public class MainActivity extends Activity {
         addSectionHeader("Network");
         addInfoCard("Type", info.getNetworkType());
         addInfoCard("Status", info.getConnectionStatus());
+        addInfoCard("Local IP", info.getLocalIpAddress());
+        addInfoCard("Public IP", info.getPublicIpAddress());
         
         addSectionHeader("System");
         addInfoCard("Sensors", info.getSensorCount());

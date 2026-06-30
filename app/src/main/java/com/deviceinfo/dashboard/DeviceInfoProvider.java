@@ -551,6 +551,67 @@ public class DeviceInfoProvider {
         return getSensorSummary();
     }
 
+    // ── IP Addresses ──
+    public String getLocalIpAddress() {
+        try {
+            WifiManager wm = (WifiManager) context.getApplicationContext().getSystemService(Context.WIFI_SERVICE);
+            if (wm != null) {
+                WifiInfo wifiInfo = wm.getConnectionInfo();
+                if (wifiInfo != null) {
+                    int ipInt = wifiInfo.getIpAddress();
+                    if (ipInt != 0) {
+                        return String.format(Locale.US, "%d.%d.%d.%d",
+                            (ipInt & 0xff), (ipInt >> 8 & 0xff),
+                            (ipInt >> 16 & 0xff), (ipInt >> 24 & 0xff));
+                    }
+                }
+            }
+            // Fallback: iterate network interfaces
+            java.util.Enumeration<java.net.NetworkInterface> nets = java.net.NetworkInterface.getNetworkInterfaces();
+            while (nets.hasMoreElements()) {
+                java.net.NetworkInterface ni = nets.nextElement();
+                if (ni.isLoopback() || !ni.isUp()) continue;
+                java.util.Enumeration<java.net.InetAddress> addrs = ni.getInetAddresses();
+                while (addrs.hasMoreElements()) {
+                    java.net.InetAddress addr = addrs.nextElement();
+                    if (addr instanceof java.net.Inet4Address && !addr.isLoopbackAddress()) {
+                        return addr.getHostAddress();
+                    }
+                }
+            }
+            return "N/A";
+        } catch (Exception e) {
+            return "N/A";
+        }
+    }
+
+    public String getPublicIpAddress() {
+        // Privacy-friendly: uses ipify.org which logs nothing
+        // Single connection with short timeout
+        java.io.BufferedReader reader = null;
+        try {
+            java.net.URL url = new java.net.URL("https://api.ipify.org");
+            java.net.HttpURLConnection conn = (java.net.HttpURLConnection) url.openConnection();
+            conn.setConnectTimeout(3000);
+            conn.setReadTimeout(3000);
+            conn.setRequestProperty("User-Agent", "SysInfoDashboard/1.0");
+            
+            int code = conn.getResponseCode();
+            if (code == 200) {
+                reader = new java.io.BufferedReader(new java.io.InputStreamReader(conn.getInputStream()));
+                String ip = reader.readLine();
+                if (ip != null && !ip.isEmpty()) {
+                    return ip.trim();
+                }
+            }
+            return "Unavailable";
+        } catch (Exception e) {
+            return "Unavailable";
+        } finally {
+            if (reader != null) try { reader.close(); } catch (Exception ignored) {}
+        }
+    }
+    
     // ── System ──
     public String getUptime() {
         long seconds = (android.os.SystemClock.elapsedRealtime() / 1000);
