@@ -6,7 +6,6 @@ import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
 import android.view.MotionEvent;
-import android.view.View;
 import android.widget.LinearLayout;
 import android.widget.ScrollView;
 import android.widget.TextView;
@@ -34,33 +33,6 @@ public class MainActivity extends Activity {
         container = findViewById(R.id.infoContainer);
         lastUpdatedView = findViewById(R.id.lastUpdated);
 
-        // Swipe-to-refresh: detect pull-down at top of scroll
-        ScrollView scrollView = findViewById(R.id.scrollView);
-        scrollView.setOnTouchListener(new View.OnTouchListener() {
-            @Override
-            public boolean onTouch(View v, MotionEvent event) {
-                switch (event.getAction()) {
-                    case MotionEvent.ACTION_DOWN:
-                        touchStartY = event.getY();
-                        return false;
-                    case MotionEvent.ACTION_MOVE:
-                        if (scrollView.getScrollY() == 0) {
-                            float dy = event.getY() - touchStartY;
-                            if (dy > SWIPE_THRESHOLD) {
-                                long now = System.currentTimeMillis();
-                                if (now - lastRefreshTime > 2000) {
-                                    lastRefreshTime = now;
-                                    refreshInfo();
-                                    return true;
-                                }
-                            }
-                        }
-                        return false;
-                }
-                return false;
-            }
-        });
-
         buildDashboard();
     }
 
@@ -81,6 +53,31 @@ public class MainActivity extends Activity {
     protected void onPause() {
         super.onPause();
         handler.removeCallbacksAndMessages(null);
+    }
+
+    @Override
+    public boolean dispatchTouchEvent(MotionEvent event) {
+        switch (event.getAction()) {
+            case MotionEvent.ACTION_DOWN:
+                touchStartY = event.getY();
+                break;
+            case MotionEvent.ACTION_MOVE:
+                ScrollView sv = findViewById(R.id.scrollView);
+                if (sv != null && sv.getScrollY() <= 5) {
+                    float dy = event.getY() - touchStartY;
+                    if (dy > SWIPE_THRESHOLD) {
+                        long now = System.currentTimeMillis();
+                        if (now - lastRefreshTime > 2000) {
+                            lastRefreshTime = now;
+                            refreshInfo();
+                            // Consume the event so it doesn't trigger a scroll
+                            return true;
+                        }
+                    }
+                }
+                break;
+        }
+        return super.dispatchTouchEvent(event);
     }
 
     private void refreshInfo() {
@@ -132,7 +129,7 @@ public class MainActivity extends Activity {
         addInfoCard("Sensors", info.getSensorCount());
         addInfoCard("Uptime", info.getUptime());
 
-        // Footer hint
+        // Footer
         TextView note = new TextView(this);
         note.setText("\u2195 Swipe down or wait 30s to refresh");
         note.setTextSize(11);
@@ -172,7 +169,6 @@ public class MainActivity extends Activity {
         labelView.setTextColor(Color.parseColor("#80FFFFFF"));
         card.addView(labelView);
 
-        // Multi-line values (e.g. WiFi with SSID on second line)
         for (String line : value.split("\n")) {
             if (line.trim().isEmpty()) continue;
             TextView valView = new TextView(this);
