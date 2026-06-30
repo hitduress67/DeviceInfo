@@ -343,13 +343,20 @@ public class DeviceInfoProvider {
         try {
             TelephonyManager tm = (TelephonyManager) context.getSystemService(Context.TELEPHONY_SERVICE);
             if (tm == null) return "";
-            // Use getNetworkType() instead of getDataNetworkType() for broader compatibility
-            // getNetworkType() returns the radio type even when data is off or on WiFi
-            int net;
+            
+            // First: check radio capability (what the modem supports, regardless of connection)
+            long radioFamily = 0;
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+                try {
+                    radioFamily = tm.getSupportedRadioAccessFamily();
+                } catch (Exception ignored) {}
+            }
+            
+            // Second: check current active network type
+            int net = TelephonyManager.NETWORK_TYPE_UNKNOWN;
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
                 net = tm.getDataNetworkType();
                 if (net == TelephonyManager.NETWORK_TYPE_UNKNOWN) {
-                    // Fallback to general network type if data type is unknown
                     net = tm.getVoiceNetworkType();
                 }
             } else {
@@ -357,17 +364,46 @@ public class DeviceInfoProvider {
                 int n = tm.getNetworkType();
                 net = n;
             }
+            
+            // Build capability string
+            StringBuilder cap = new StringBuilder();
+            
+            // Check radio access family for 5G NR capability
+            boolean has5g = (radioFamily & TelephonyManager.NETWORK_TYPE_BITMASK_NR) != 0;
+            boolean has4g = (radioFamily & TelephonyManager.NETWORK_TYPE_BITMASK_LTE) != 0;
+            
+            // If radioFamily is 0 (permission issue), fall back to network type
+            if (radioFamily == 0) {
+                has5g = (net == TelephonyManager.NETWORK_TYPE_NR);
+                has4g = (net == TelephonyManager.NETWORK_TYPE_LTE);
+            }
+            
+            if (has5g) cap.append("5G");
+            else if (has4g) cap.append("4G LTE");
+            
+            // Add current connection type
+            String current = "";
             switch (net) {
-                case TelephonyManager.NETWORK_TYPE_NR: return "5G";
-                case TelephonyManager.NETWORK_TYPE_LTE:
-                    return "4G LTE";
+                case TelephonyManager.NETWORK_TYPE_NR: current = "5G"; break;
+                case TelephonyManager.NETWORK_TYPE_LTE: current = "4G LTE"; break;
                 case TelephonyManager.NETWORK_TYPE_UMTS:
                 case TelephonyManager.NETWORK_TYPE_HSPA:
-                case TelephonyManager.NETWORK_TYPE_HSPAP: return "3G";
+                case TelephonyManager.NETWORK_TYPE_HSPAP: current = "3G"; break;
                 case TelephonyManager.NETWORK_TYPE_EDGE:
-                case TelephonyManager.NETWORK_TYPE_GPRS: return "2G";
-                default: return "";
+                case TelephonyManager.NETWORK_TYPE_GPRS: current = "2G"; break;
             }
+            
+            // Build result
+            StringBuilder result = new StringBuilder();
+            if (cap.length() > 0) {
+                result.append("Capable: ").append(cap);
+            }
+            if (!current.isEmpty()) {
+                if (result.length() > 0) result.append("\n");
+                result.append("Active: ").append(current);
+            }
+            
+            return result.toString();
         } catch (Exception e) {
             return "";
         }
