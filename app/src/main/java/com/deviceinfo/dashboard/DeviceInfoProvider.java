@@ -338,6 +338,27 @@ public class DeviceInfoProvider {
     }
 
     // ── Network ──
+    
+    private String getCellularGeneration() {
+        try {
+            TelephonyManager tm = (TelephonyManager) context.getSystemService(Context.TELEPHONY_SERVICE);
+            if (tm == null) return "";
+            int net = tm.getDataNetworkType();
+            switch (net) {
+                case TelephonyManager.NETWORK_TYPE_NR: return "5G";
+                case TelephonyManager.NETWORK_TYPE_LTE: return "4G LTE";
+                case TelephonyManager.NETWORK_TYPE_UMTS:
+                case TelephonyManager.NETWORK_TYPE_HSPA:
+                case TelephonyManager.NETWORK_TYPE_HSPAP: return "3G";
+                case TelephonyManager.NETWORK_TYPE_EDGE:
+                case TelephonyManager.NETWORK_TYPE_GPRS: return "2G";
+                default: return "";
+            }
+        } catch (Exception e) {
+            return "";
+        }
+    }
+    
     public String getNetworkType() {
         try {
             ConnectivityManager cm = (ConnectivityManager) context.getSystemService(Context.CONNECTIVITY_SERVICE);
@@ -348,6 +369,8 @@ public class DeviceInfoProvider {
             if (ni == null || !ni.isConnected()) return "Disconnected";
 
             int type = ni.getType();
+            StringBuilder result = new StringBuilder();
+            
             if (type == ConnectivityManager.TYPE_WIFI) {
                 try {
                     WifiManager wm = (WifiManager) context.getApplicationContext().getSystemService(Context.WIFI_SERVICE);
@@ -364,31 +387,45 @@ public class DeviceInfoProvider {
                             else if (rssi >= -60) signal = "Good";
                             else if (rssi >= -70) signal = "Fair";
                             else signal = "Weak";
-                            return "WiFi \u00b7 " + ssid + "\n" + freq + " MHz (" + signal + ")";
+                            result.append("WiFi \u00b7 ").append(ssid).append("\n").append(freq).append(" MHz (").append(signal).append(")");
+                        } else {
+                            result.append("WiFi");
                         }
+                    } else {
+                        result.append("WiFi");
                     }
-                } catch (Exception ignored) {}
-                return "WiFi";
+                } catch (Exception ignored) {
+                    result.append("WiFi");
+                }
+                // Also check cellular generation
+                String cell = getCellularGeneration();
+                if (!cell.isEmpty()) {
+                    result.append("\n").append(cell);
+                    try {
+                        TelephonyManager tm = (TelephonyManager) context.getSystemService(Context.TELEPHONY_SERVICE);
+                        if (tm != null) {
+                            String carrier = tm.getNetworkOperatorName();
+                            if (carrier != null && !carrier.isEmpty()) {
+                                result.append(" \u00b7 ").append(carrier);
+                            }
+                        }
+                    } catch (Exception ignored) {}
+                }
+                return result.toString();
             } else if (type == ConnectivityManager.TYPE_MOBILE) {
-                String netType = "Cellular";
+                String cell = getCellularGeneration();
+                if (cell.isEmpty()) cell = "Cellular";
+                result.append(cell);
                 try {
                     TelephonyManager tm = (TelephonyManager) context.getSystemService(Context.TELEPHONY_SERVICE);
                     if (tm != null) {
-                        int net = tm.getDataNetworkType();
-                        switch (net) {
-                            case TelephonyManager.NETWORK_TYPE_NR: netType = "5G"; break;
-                            case TelephonyManager.NETWORK_TYPE_LTE: netType = "4G LTE"; break;
-                            case TelephonyManager.NETWORK_TYPE_UMTS:
-                            case TelephonyManager.NETWORK_TYPE_HSPA:
-                            case TelephonyManager.NETWORK_TYPE_HSPAP: netType = "3G"; break;
-                            case TelephonyManager.NETWORK_TYPE_EDGE:
-                            case TelephonyManager.NETWORK_TYPE_GPRS: netType = "2G"; break;
-                        }
                         String carrier = tm.getNetworkOperatorName();
-                        if (carrier != null && !carrier.isEmpty()) return netType + " \u00b7 " + carrier;
+                        if (carrier != null && !carrier.isEmpty()) {
+                            result.append(" \u00b7 ").append(carrier);
+                        }
                     }
                 } catch (Exception ignored) {}
-                return netType;
+                return result.toString();
             } else if (type == ConnectivityManager.TYPE_ETHERNET) {
                 return "Ethernet";
             }
