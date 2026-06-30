@@ -3,6 +3,5 @@
     <style name="Theme.DeviceInfo" parent="android:Theme.DeviceDefault.NoActionBar">
         <item name="android:statusBarColor">#FF121212</item>
         <item name="android:navigationBarColor">#FF121212</item>
-        <item name="android:windowBackground">#FF121212</item>
     </style>
 </resources>
