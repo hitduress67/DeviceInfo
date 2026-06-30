@@ -2,6 +2,13 @@
 
 A real-time Android device diagnostics app. View your device's hardware, performance, battery, storage, display, network, and system information in a clean dark-themed dashboard.
 
+## Screenshots
+
+| Dark Theme Dashboard |
+|:---:|
+| ![Screenshot](screenshots/screenshot_dark.png) |
+| *Dark theme with Material Design card-based layout showing device info, performance, battery, storage, display, and network* |
+
 ## Features
 
 - 📊 **Device Info** — Model, manufacturer, Android version, security patch
