@@ -16,6 +16,7 @@ import android.os.BatteryManager;
 import android.os.Build;
 import android.os.Environment;
 import android.os.StatFs;
+import android.os.StrictMode;
 import android.provider.Settings;
 import android.telephony.TelephonyManager;
 import android.util.DisplayMetrics;
@@ -587,7 +588,11 @@ public class DeviceInfoProvider {
 
     public String getPublicIpAddress() {
         // Privacy-friendly: uses ipify.org which logs nothing
-        // Single connection with short timeout
+        // Temporarily allow network on the main thread for this quick check
+        StrictMode.ThreadPolicy oldPolicy = StrictMode.getThreadPolicy();
+        StrictMode.setThreadPolicy(new StrictMode.ThreadPolicy.Builder()
+            .permitNetwork().permitDiskReads().permitDiskWrites().build());
+        
         java.io.BufferedReader reader = null;
         try {
             java.net.URL url = new java.net.URL("https://api.ipify.org");
@@ -595,17 +600,41 @@ public class DeviceInfoProvider {
             conn.setConnectTimeout(3000);
             conn.setReadTimeout(3000);
             conn.setRequestProperty("User-Agent", "SysInfoDashboard/1.0");
+            conn.setInstanceFollowRedirects(true);
             
             int code = conn.getResponseCode();
             if (code == 200) {
                 reader = new java.io.BufferedReader(new java.io.InputStreamReader(conn.getInputStream()));
                 String ip = reader.readLine();
                 if (ip != null && !ip.isEmpty()) {
-                    return ip.trim();
+                    String result = ip.trim();
+                    StrictMode.setThreadPolicy(oldPolicy);
+                    return result;
                 }
             }
+            
+            // Fallback to icanhazip.com if ipify failed
+            try {
+                java.net.URL url2 = new java.net.URL("https://icanhazip.com");
+                java.net.HttpURLConnection conn2 = (java.net.HttpURLConnection) url2.openConnection();
+                conn2.setConnectTimeout(3000);
+                conn2.setReadTimeout(3000);
+                conn2.setRequestProperty("User-Agent", "curl/7.68.0");
+                conn2.setInstanceFollowRedirects(true);
+                if (conn2.getResponseCode() == 200) {
+                    reader = new java.io.BufferedReader(new java.io.InputStreamReader(conn2.getInputStream()));
+                    String ip2 = reader.readLine();
+                    if (ip2 != null && !ip2.isEmpty()) {
+                        StrictMode.setThreadPolicy(oldPolicy);
+                        return ip2.trim();
+                    }
+                }
+            } catch (Exception ignored) {}
+            
+            StrictMode.setThreadPolicy(oldPolicy);
             return "Unavailable";
         } catch (Exception e) {
+            StrictMode.setThreadPolicy(oldPolicy);
             return "Unavailable";
         } finally {
             if (reader != null) try { reader.close(); } catch (Exception ignored) {}
