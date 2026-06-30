@@ -22,12 +22,12 @@ A real-time Android device diagnostics app. View your device's hardware, perform
 
 ## Download
 
-Download the latest APK from the [Releases](https://github.com/samsungs6wanker69/DeviceInfo/releases) page.
+|Download the latest APK from the [Releases](https://github.com/hitduress67/DeviceInfo/releases) page.|
 
 ## Building from Source
 
 ```bash
-git clone https://github.com/samsungs6wanker69/DeviceInfo.git
+git clone https://github.com/hitduress67/DeviceInfo.git
 cd DeviceInfo
 ./gradlew assembleRelease
 ```
