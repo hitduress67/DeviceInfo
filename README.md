@@ -20,12 +20,6 @@ A real-time Android device diagnostics app. View your device's hardware, perform
 - 🔄 **Pull-to-refresh** — Swipe down to refresh all data
 - ⏱️ **Auto-refresh** — Updates every 30 seconds
 
-## Screenshots
-
-| Dark Theme Dashboard |
-|:---:|
-| *Material Design 3 dark theme with card-based layout* |
-
 ## Download
 
 Download the latest APK from the [Releases](https://github.com/samsungs6wanker69/DeviceInfo/releases) page.
