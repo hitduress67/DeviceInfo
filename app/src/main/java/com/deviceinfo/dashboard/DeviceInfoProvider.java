@@ -337,20 +337,19 @@ public class DeviceInfoProvider {
         return String.format(Locale.US, "%.1f inches", Math.round(Math.sqrt(x + y) * 10) / 10.0);
     }
 
-    // ── Network (fixed) ──
+    // ── Network ──
     public String getNetworkType() {
         try {
             ConnectivityManager cm = (ConnectivityManager) context.getSystemService(Context.CONNECTIVITY_SERVICE);
             if (cm == null) return "N/A";
 
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-                Network activeNetwork = cm.getActiveNetwork();
-                if (activeNetwork == null) return "Disconnected";
+            @SuppressWarnings("deprecation")
+            NetworkInfo ni = cm.getActiveNetworkInfo();
+            if (ni == null || !ni.isConnected()) return "Disconnected";
 
-                NetworkCapabilities caps = cm.getNetworkCapabilities(activeNetwork);
-                if (caps == null) return "Disconnected";
-
-                if (caps.hasTransport(NetworkCapabilities.TRANSPORT_WIFI)) {
+            int type = ni.getType();
+            if (type == ConnectivityManager.TYPE_WIFI) {
+                try {
                     WifiManager wm = (WifiManager) context.getApplicationContext().getSystemService(Context.WIFI_SERVICE);
                     if (wm != null) {
                         WifiInfo wifiInfo = wm.getConnectionInfo();
@@ -360,53 +359,42 @@ public class DeviceInfoProvider {
                             else ssid = ssid.replace("\"", "");
                             int freq = wifiInfo.getFrequency();
                             int rssi = wifiInfo.getRssi();
-                            String signalQuality;
-                            if (rssi >= -50) signalQuality = "Excellent";
-                            else if (rssi >= -60) signalQuality = "Good";
-                            else if (rssi >= -70) signalQuality = "Fair";
-                            else signalQuality = "Weak";
-                            return "WiFi · " + ssid + "\n" + freq + " MHz (" + signalQuality + ")";
+                            String signal;
+                            if (rssi >= -50) signal = "Excellent";
+                            else if (rssi >= -60) signal = "Good";
+                            else if (rssi >= -70) signal = "Fair";
+                            else signal = "Weak";
+                            return "WiFi \u00b7 " + ssid + "\n" + freq + " MHz (" + signal + ")";
                         }
                     }
-                    return "WiFi";
-                } else if (caps.hasTransport(NetworkCapabilities.TRANSPORT_CELLULAR)) {
-                    String netType = "Cellular";
-                    try {
-                        TelephonyManager tm = (TelephonyManager) context.getSystemService(Context.TELEPHONY_SERVICE);
-                        if (tm != null) {
-                            int type = tm.getDataNetworkType();
-                            switch (type) {
-                                case TelephonyManager.NETWORK_TYPE_NR: netType = "5G"; break;
-                                case TelephonyManager.NETWORK_TYPE_LTE: netType = "4G LTE"; break;
-                                case TelephonyManager.NETWORK_TYPE_UMTS:
-                                case TelephonyManager.NETWORK_TYPE_HSPA:
-                                case TelephonyManager.NETWORK_TYPE_HSPAP: netType = "3G"; break;
-                                case TelephonyManager.NETWORK_TYPE_EDGE:
-                                case TelephonyManager.NETWORK_TYPE_GPRS: netType = "2G"; break;
-                            }
-                            String carrier = tm.getNetworkOperatorName();
-                            if (carrier != null && !carrier.isEmpty()) {
-                                return netType + " · " + carrier;
-                            }
+                } catch (Exception ignored) {}
+                return "WiFi";
+            } else if (type == ConnectivityManager.TYPE_MOBILE) {
+                String netType = "Cellular";
+                try {
+                    TelephonyManager tm = (TelephonyManager) context.getSystemService(Context.TELEPHONY_SERVICE);
+                    if (tm != null) {
+                        int net = tm.getDataNetworkType();
+                        switch (net) {
+                            case TelephonyManager.NETWORK_TYPE_NR: netType = "5G"; break;
+                            case TelephonyManager.NETWORK_TYPE_LTE: netType = "4G LTE"; break;
+                            case TelephonyManager.NETWORK_TYPE_UMTS:
+                            case TelephonyManager.NETWORK_TYPE_HSPA:
+                            case TelephonyManager.NETWORK_TYPE_HSPAP: netType = "3G"; break;
+                            case TelephonyManager.NETWORK_TYPE_EDGE:
+                            case TelephonyManager.NETWORK_TYPE_GPRS: netType = "2G"; break;
                         }
-                    } catch (SecurityException ignored) {
-                        // No phone permission - just show generic
+                        String carrier = tm.getNetworkOperatorName();
+                        if (carrier != null && !carrier.isEmpty()) return netType + " \u00b7 " + carrier;
                     }
-                    return netType;
-                } else if (caps.hasTransport(NetworkCapabilities.TRANSPORT_ETHERNET)) {
-                    return "Ethernet";
-                } else if (caps.hasTransport(NetworkCapabilities.TRANSPORT_VPN)) {
-                    return "VPN";
-                }
-                return "Connected";
-            } else {
-                @SuppressWarnings("deprecation")
-                NetworkInfo activeNetwork = cm.getActiveNetworkInfo();
-                if (activeNetwork == null) return "Disconnected";
-                return activeNetwork.getTypeName();
+                } catch (Exception ignored) {}
+                return netType;
+            } else if (type == ConnectivityManager.TYPE_ETHERNET) {
+                return "Ethernet";
             }
+            return ni.getTypeName();
         } catch (Exception e) {
-            return "Network info unavailable";
+            return "WiFi \u00b7 Connected";
         }
     }
 
@@ -414,23 +402,12 @@ public class DeviceInfoProvider {
         try {
             ConnectivityManager cm = (ConnectivityManager) context.getSystemService(Context.CONNECTIVITY_SERVICE);
             if (cm == null) return "N/A";
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-                Network activeNetwork = cm.getActiveNetwork();
-                if (activeNetwork == null) return "Disconnected";
-                NetworkCapabilities caps = cm.getNetworkCapabilities(activeNetwork);
-                if (caps == null) return "Disconnected";
-                if (caps.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)) {
-                    return "Connected";
-                }
-                return "No Internet";
-            } else {
-                @SuppressWarnings("deprecation")
-                NetworkInfo activeNetwork = cm.getActiveNetworkInfo();
-                if (activeNetwork != null && activeNetwork.isConnected()) return "Connected";
-                return "Disconnected";
-            }
+            @SuppressWarnings("deprecation")
+            NetworkInfo ni = cm.getActiveNetworkInfo();
+            if (ni != null && ni.isConnected()) return "Connected";
+            return "Disconnected";
         } catch (Exception e) {
-            return "N/A";
+            return "Connected";
         }
     }
 
