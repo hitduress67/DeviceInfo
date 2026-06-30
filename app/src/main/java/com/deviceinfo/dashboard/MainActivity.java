@@ -92,11 +92,20 @@ public class MainActivity extends Activity {
         
         addSectionHeader("Network");
         addInfoCard("Type", info.getNetworkType());
-        addInfoCard("Status", info.getIpAddress());
+        addInfoCard("Status", info.getConnectionStatus());
         
         addSectionHeader("System");
         addInfoCard("Sensors", info.getSensorCount());
         addInfoCard("Uptime", info.getUptime());
+        
+        // Add a note that Network Type now shows SSID & signal for WiFi
+        TextView note = new TextView(this);
+        note.setText("↕ Swipe or wait 30s to auto-refresh");
+        note.setTextSize(11);
+        note.setTextColor(Color.parseColor("#40FFFFFF"));
+        note.setGravity(android.view.Gravity.CENTER);
+        note.setPadding(16, 24, 16, 32);
+        container.addView(note);
     }
 
     private void addSectionHeader(String title) {
