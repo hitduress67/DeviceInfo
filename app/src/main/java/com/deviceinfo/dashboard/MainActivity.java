@@ -6,6 +6,7 @@ import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
 import android.view.MotionEvent;
+import android.view.View;
 import android.widget.LinearLayout;
 import android.widget.ScrollView;
 import android.widget.TextView;
@@ -19,6 +20,7 @@ public class MainActivity extends Activity {
     private DeviceInfoProvider info;
     private LinearLayout container;
     private TextView lastUpdatedView;
+    private TextView pullIndicator;
     private Handler handler = new Handler(Looper.getMainLooper());
     private float touchStartY = 0;
     private long lastRefreshTime = 0;
@@ -32,6 +34,18 @@ public class MainActivity extends Activity {
         info = new DeviceInfoProvider(this);
         container = findViewById(R.id.infoContainer);
         lastUpdatedView = findViewById(R.id.lastUpdated);
+        pullIndicator = findViewById(R.id.pullIndicator);
+
+        // Hide pull indicator when scrolling normally
+        ScrollView sv = findViewById(R.id.scrollView);
+        sv.setOnScrollChangeListener(new View.OnScrollChangeListener() {
+            @Override
+            public void onScrollChange(View v, int scrollX, int scrollY, int oldScrollX, int oldScrollY) {
+                if (scrollY > 10 && pullIndicator.getVisibility() == View.VISIBLE) {
+                    pullIndicator.setVisibility(View.GONE);
+                }
+            }
+        });
 
         buildDashboard();
     }
@@ -61,20 +75,42 @@ public class MainActivity extends Activity {
             case MotionEvent.ACTION_DOWN:
                 touchStartY = event.getY();
                 break;
-            case MotionEvent.ACTION_MOVE:
+            case MotionEvent.ACTION_MOVE: {
                 ScrollView sv = findViewById(R.id.scrollView);
                 if (sv != null && sv.getScrollY() <= 5) {
                     float dy = event.getY() - touchStartY;
-                    if (dy > SWIPE_THRESHOLD) {
-                        long now = System.currentTimeMillis();
-                        if (now - lastRefreshTime > 2000) {
-                            lastRefreshTime = now;
-                            refreshInfo();
-                            // Consume the event so it doesn't trigger a scroll
-                            return true;
+                    if (dy > 30) {
+                        // Show pull indicator during the gesture
+                        pullIndicator.setVisibility(View.VISIBLE);
+                        if (dy > SWIPE_THRESHOLD) {
+                            pullIndicator.setText("\u2191 Release to refresh");
+                            pullIndicator.setTextColor(Color.parseColor("#90CAF9"));
+                            long now = System.currentTimeMillis();
+                            if (now - lastRefreshTime > 2000) {
+                                lastRefreshTime = now;
+                                // Show refreshing feedback
+                                pullIndicator.setText("\u21bb Refreshing\u2026");
+                                refreshInfo();
+                                return true;
+                            }
+                        } else {
+                            int pct = (int)((dy / SWIPE_THRESHOLD) * 100);
+                            pullIndicator.setText("\u2193 Pull to refresh " + pct + "%");
+                            pullIndicator.setTextColor(Color.parseColor("#60FFFFFF"));
                         }
                     }
                 }
+                break;
+            }
+            case MotionEvent.ACTION_UP:
+            case MotionEvent.ACTION_CANCEL:
+                // Hide indicator after a short delay
+                pullIndicator.postDelayed(new Runnable() {
+                    @Override
+                    public void run() {
+                        pullIndicator.setVisibility(View.GONE);
+                    }
+                }, 1200);
                 break;
         }
         return super.dispatchTouchEvent(event);
@@ -84,6 +120,17 @@ public class MainActivity extends Activity {
         buildDashboard();
         SimpleDateFormat sdf = new SimpleDateFormat("HH:mm:ss", Locale.getDefault());
         lastUpdatedView.setText("Last updated: " + sdf.format(new Date()));
+        
+        // Show visual feedback in the pull indicator area
+        pullIndicator.setVisibility(View.VISIBLE);
+        pullIndicator.setText("\u2713 Refreshed");
+        pullIndicator.setTextColor(Color.parseColor("#4CAF50"));
+        pullIndicator.postDelayed(new Runnable() {
+            @Override
+            public void run() {
+                pullIndicator.setVisibility(View.GONE);
+            }
+        }, 1500);
     }
 
     private void buildDashboard() {
