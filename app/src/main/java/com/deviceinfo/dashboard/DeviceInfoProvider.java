@@ -1,4 +1,4 @@
-package $PKG;
+package com.deviceinfo.dashboard;
 
 import android.app.ActivityManager;
 import android.content.Context;
