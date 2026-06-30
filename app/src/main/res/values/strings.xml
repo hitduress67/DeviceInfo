@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">SysInfo Dashboard</string>
+    <string name="subtitle">Real-time device diagnostics</string>
+</resources>
