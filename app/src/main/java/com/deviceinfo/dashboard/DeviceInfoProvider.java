@@ -343,10 +343,24 @@ public class DeviceInfoProvider {
         try {
             TelephonyManager tm = (TelephonyManager) context.getSystemService(Context.TELEPHONY_SERVICE);
             if (tm == null) return "";
-            int net = tm.getDataNetworkType();
+            // Use getNetworkType() instead of getDataNetworkType() for broader compatibility
+            // getNetworkType() returns the radio type even when data is off or on WiFi
+            int net;
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+                net = tm.getDataNetworkType();
+                if (net == TelephonyManager.NETWORK_TYPE_UNKNOWN) {
+                    // Fallback to general network type if data type is unknown
+                    net = tm.getVoiceNetworkType();
+                }
+            } else {
+                @SuppressWarnings("deprecation")
+                int n = tm.getNetworkType();
+                net = n;
+            }
             switch (net) {
                 case TelephonyManager.NETWORK_TYPE_NR: return "5G";
-                case TelephonyManager.NETWORK_TYPE_LTE: return "4G LTE";
+                case TelephonyManager.NETWORK_TYPE_LTE:
+                    return "4G LTE";
                 case TelephonyManager.NETWORK_TYPE_UMTS:
                 case TelephonyManager.NETWORK_TYPE_HSPA:
                 case TelephonyManager.NETWORK_TYPE_HSPAP: return "3G";
